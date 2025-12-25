@@ -5,12 +5,12 @@ import { getFirestore } from "firebase/firestore";
 
 // Ces informations se trouvent dans les paramètres de ton projet sur la console Firebase
 const firebaseConfig = {
-  apiKey: "AIzaSyC6WJUqp1EVpvcNL-M0KbhzyKEHh8js1gE",
-  authDomain: "mytradingjournal-84a67.firebaseapp.com",
-  projectId: "mytradingjournal-84a67",
-  storageBucket: "mytradingjournal-84a67.firebasestorage.app",
-  messagingSenderId: "285408502416",
-  appId: "1:285408502416:web:0fed0eec92d8fa2496ee15"
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.REACT_APP_FIREBASE_APP_ID
 };
 
 // Initialiser l'application Firebase
