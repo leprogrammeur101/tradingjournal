@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect} from 'react';
 import { Save } from 'lucide-react';
 
 const TradeForm = ({ onSave, onCancel }) => {
@@ -10,10 +10,27 @@ const TradeForm = ({ onSave, onCancel }) => {
     tp: '',
     rr: '',
     result: '',
+    profit$: '', 
     contextMacro: '',
     setup: '',
     notes: ''
   });
+// Calcul automatique du Risk:Reward
+  useEffect(() => {
+    const entry = parseFloat(formData.entry);
+    const sl = parseFloat(formData.sl);
+    const tp = parseFloat(formData.tp);
+
+    if (entry && sl && tp) {
+      const risk = Math.abs(entry - sl);
+      const reward = Math.abs(tp - entry);
+      
+      if (risk !== 0) {
+        const ratio = (reward / risk).toFixed(2);
+        setFormData(prev => ({ ...prev, rr: `1:${ratio}` }));
+      }
+    }
+  }, [formData.entry, formData.sl, formData.tp]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -108,8 +125,7 @@ const TradeForm = ({ onSave, onCancel }) => {
           <input
             type="text"
             value={formData.rr}
-            onChange={(e) => setFormData({...formData, rr: e.target.value})}
-            placeholder="Ex: 1:3"
+            readOnly
             style={{ width: '100%', padding: '0.5rem', borderRadius: '0.375rem', border: '1px solid rgba(59, 130, 246, 0.3)', background: 'rgba(15, 23, 42, 0.5)', color: 'white' }}
           />
         </div>
@@ -128,6 +144,16 @@ const TradeForm = ({ onSave, onCancel }) => {
           </select>
         </div>
 
+        <div>
+          <label style={{ color: '#cbd5e1', fontSize: '0.875rem', marginBottom: '0.5rem', display: 'block' }}>Gain/Perte net ($)</label>
+          <input 
+            type="number" 
+            value={formData.profit$} 
+            onChange={(e) => setFormData({...formData, profit$: e.target.value})} 
+            placeholder="Ex: 200 ou -100" 
+            style={{ width: '100%', padding: '0.5rem', borderRadius: '0.375rem', border: '1px solid rgba(59, 130, 246, 0.3)', background: 'rgba(15, 23, 42, 0.5)', color: 'white' }}
+          />
+        </div>
         <div>
           <label style={{ color: '#cbd5e1', fontSize: '0.875rem', marginBottom: '0.5rem', display: 'block' }}>Contexte Macro</label>
           <select

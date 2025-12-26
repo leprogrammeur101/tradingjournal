@@ -1,24 +1,26 @@
 import React from 'react';
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 
-const EquityCurve = ({ trades }) => {
-  // Préparation des données : on part de 0 et on cumule les profits
-  let cumulativeProfit = 0;
+const EquityCurve = ({ trades, initialCapital }) => {
+  // On s'assure que initialCapital est un nombre, sinon par défaut 0
+  const startBalance = parseFloat(initialCapital) || 0;
+  let cumulativeBalance = startBalance;
   
-  // On trie les trades par date (du plus ancien au plus récent) pour la courbe
+  // On trie les trades par date et on calcule le solde cumulé
   const data = [...trades]
     .sort((a, b) => new Date(a.date) - new Date(b.date))
     .map((trade, index) => {
-      cumulativeProfit += parseFloat(trade.profit) || 0;
+      // Utilisation de profit$ (le champ de ton formulaire)
+      cumulativeBalance += parseFloat(trade.profit$) || 0;
       return {
-        name: `Trade ${index + 1}`,
-        profit: cumulativeProfit,
+        name: `T${index + 1}`,
+        balance: cumulativeBalance,
         date: new Date(trade.date).toLocaleDateString()
       };
     });
 
-  // Ajouter un point de départ à 0 si le journal est vide
-  const chartData = [{ name: 'Départ', profit: 0 }, ...data];
+  // Le point de départ affiche maintenant ton capital initial
+  const chartData = [{ name: 'Départ', balance: startBalance }, ...data];
 
   return (
     <div style={{ 
@@ -33,25 +35,33 @@ const EquityCurve = ({ trades }) => {
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={chartData}>
           <defs>
-            <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
+            <linearGradient id="colorBalance" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
               <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
             </linearGradient>
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={false} />
           <XAxis dataKey="name" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
-          <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}$`} />
+          <YAxis 
+            stroke="#64748b" 
+            fontSize={12} 
+            tickLine={false} 
+            axisLine={false} 
+            domain={['dataMin - 100', 'auto']} // Ajuste l'échelle pour ne pas coller au bord
+            tickFormatter={(value) => `${value}$`} 
+          />
           <Tooltip 
             contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '8px', color: '#fff' }}
             itemStyle={{ color: '#60a5fa' }}
+            formatter={(value) => [`${value.toFixed(2)} $`, 'Solde']}
           />
           <Area 
             type="monotone" 
-            dataKey="profit" 
+            dataKey="balance" 
             stroke="#3b82f6" 
             strokeWidth={3}
             fillOpacity={1} 
-            fill="url(#colorProfit)" 
+            fill="url(#colorBalance)" 
             animationDuration={1500}
           />
         </AreaChart>
