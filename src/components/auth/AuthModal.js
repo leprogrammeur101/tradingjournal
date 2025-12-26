@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { auth } from '../../firebase'; // Vérifie que le chemin est correct
+import { auth } from './firebase'; // Vérifie que le chemin est correct
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword 

@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, FileText, BarChart3 } from 'lucide-react';
-import MacroForm from '../components/journal/MacroForm';
-import MacroCard from '../components/journal/MacroCard';
-import TradeForm from '../components/journal/TradeForm';
-import TradeCard from '../components/journal/TradeCard';
-import EquityCurve from '../components/journal/EquityCurve';
-import TradingStats from '../components/journal/TradingStats';
-import SessionAnalysis from '../components/journal/SessionAnalysis';
+import MacroForm from './components/journal/MacroForm';
+import MacroCard from './components/journal/MacroCard';
+import TradeForm from './components/journal/TradeForm';
+import TradeCard from './components/journal/TradeCard';
+import EquityCurve from './components/journal/EquityCurve';
+import TradingStats from './components/journal/TradingStats';
+import SessionAnalysis from './components/journal/SessionAnalysis';
 
 const JournalPage = ({ user }) => {
   const [activeTab, setActiveTab] = useState('macro');
