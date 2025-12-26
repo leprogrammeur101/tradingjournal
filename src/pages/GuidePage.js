@@ -1,4 +1,4 @@
-import './App.css';
+import '../App.css';
 import React, { useState } from 'react';
 import { ChevronDown, ChevronUp, BookOpen, TrendingUp, DollarSign, Activity } from 'lucide-react';
 
