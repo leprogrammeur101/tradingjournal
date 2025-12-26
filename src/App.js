@@ -3,6 +3,7 @@ import { auth } from './firebase'; // Import de la config Firebase
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import AuthModal from './components/auth/AuthModal';
 import JournalPage from './pages/JournalPage';
+import GuidePage from './pages/GuidePage'
 import { LogOut, Layout } from 'lucide-react';
 
 function App() {
@@ -10,7 +11,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState('login');
-
+  const [activeTab, setActiveTab] = useState('guide');
   // 1. Écouter l'état de connexion de Firebase
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -63,26 +64,64 @@ function App() {
         </div>
       </nav>
 
-      {/* Main Content */}
       <main style={{ padding: '2rem' }}>
-        {user ? (
-          <JournalPage user={user} />
+        {/* Barre d'onglets pour tout le monde */}
+        <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', borderBottom: '1px solid #374151', paddingBottom: '1rem' }}>
+          <button 
+            onClick={() => setActiveTab('guide')}
+            style={{
+              padding: '0.5rem 1rem',
+              color: activeTab === 'guide' ? '#3b82f6' : '#94a3b8',
+              borderBottom: activeTab === 'guide' ? '2px solid #3b82f6' : 'none',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontWeight: 'bold'
+            }}
+          >
+            Guide Économique
+          </button>
+          <button 
+            onClick={() => setActiveTab('journal')}
+            style={{
+              padding: '0.5rem 1rem',
+              color: activeTab === 'journal' ? '#3b82f6' : '#94a3b8',
+              borderBottom: activeTab === 'journal' ? '2px solid #3b82f6' : 'none',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontWeight: 'bold'
+            }}
+          >
+            Mon Journal
+          </button>
+        </div>
+
+        {/* Affichage du contenu selon l'onglet et l'état de connexion */}
+        {activeTab === 'guide' ? (
+          <GuidePage />
         ) : (
-          <div style={{ textAlign: 'center', marginTop: '5rem' }}>
-            <h1 style={{ fontSize: '3rem', marginBottom: '1rem' }}>Maîtrisez votre Trading.</h1>
-            <p style={{ color: '#94a3b8', maxWidth: '600px', margin: '0 auto 2rem' }}>
-              Documentez vos analyses macro, suivez votre psychologie et visualisez votre courbe de progression en temps réel avec une base de données sécurisée.
-            </p>
-            <button 
-              onClick={() => { setAuthMode('register'); setIsAuthModalOpen(true); }}
-              style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '1rem 2rem', borderRadius: '0.75rem', fontSize: '1.1rem', fontWeight: 'bold', cursor: 'pointer' }}
-            >
-              Commencer gratuitement
-            </button>
+          <div>
+            {user ? (
+              <JournalPage user={user} />
+            ) : (
+              <div style={{ textAlign: 'center', marginTop: '5rem' }}>
+                <h2>Connectez-vous pour accéder à votre journal</h2>
+                <p style={{ color: '#94a3b8', marginBottom: '2rem' }}>
+                  Suivez vos performances et analysez votre psychologie de trading.
+                </p>
+                <button 
+                  onClick={() => { setAuthMode('login'); setIsAuthModalOpen(true); }}
+                  style={{ background: '#3b82f6', color: 'white', padding: '1rem 2rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer' }}
+                >
+                  Se connecter
+                </button>
+              </div>
+            )}
           </div>
         )}
       </main>
-
+      
       {/* Modal d'Authentification */}
       {isAuthModalOpen && (
         <AuthModal 
