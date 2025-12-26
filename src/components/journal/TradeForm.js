@@ -16,21 +16,28 @@ const TradeForm = ({ onSave, onCancel }) => {
     notes: ''
   });
 // Calcul automatique du Risk:Reward
-  useEffect(() => {
-    const entry = parseFloat(formData.entry);
-    const sl = parseFloat(formData.sl);
-    const tp = parseFloat(formData.tp);
+ // Calcul automatique du Risk:Reward corrigé
+useEffect(() => {
+  // On remplace les virgules par des points pour autoriser les deux saisies
+  const cleanEntry = formData.entry.toString().replace(',', '.');
+  const cleanSl = formData.sl.toString().replace(',', '.');
+  const cleanTp = formData.tp.toString().replace(',', '.');
 
-    if (entry && sl && tp) {
-      const risk = Math.abs(entry - sl);
-      const reward = Math.abs(tp - entry);
-      
-      if (risk !== 0) {
-        const ratio = (reward / risk).toFixed(2);
-        setFormData(prev => ({ ...prev, rr: `1:${ratio}` }));
-      }
+  const e = parseFloat(cleanEntry);
+  const s = parseFloat(cleanSl);
+  const t = parseFloat(cleanTp);
+
+  if (!isNaN(e) && !isNaN(s) && !isNaN(t) && e !== s) {
+    const risk = Math.abs(e - s);
+    const reward = Math.abs(t - e);
+    const ratio = (reward / risk).toFixed(2);
+    const newRR = `1:${ratio}`;
+
+    if (formData.rr !== newRR) {
+      setFormData(prev => ({ ...prev, rr: newRR }));
     }
-  }, [formData.entry, formData.sl, formData.tp]);
+  }
+}, [formData.entry, formData.rr, formData.sl, formData.tp]); // On retire formData.rr des dépendances
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -39,23 +46,26 @@ const TradeForm = ({ onSave, onCancel }) => {
 
   return (
     <form onSubmit={handleSubmit} style={{ background: 'rgba(30, 41, 59, 0.5)', borderRadius: '0.75rem', padding: '1.5rem', marginBottom: '1.5rem', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
-      <h4 style={{ color: 'white', fontWeight: '600', marginBottom: '1rem' }}>Nouveau Trade</h4>
-      
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-        <div>
-        <div>
-        <label style={{ color: '#cbd5e1', display: 'block', marginBottom: '0.5rem' }}>Session</label>
+    <h4 style={{ color: 'white', fontWeight: '600', marginBottom: '1rem' }}>Nouveau Trade</h4>
+    
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+      {/* Session */}
+      <div>
+        <label style={{ color: '#cbd5e1', fontSize: '0.875rem', display: 'block', marginBottom: '0.5rem' }}>Session</label>
         <select 
-            value={formData.session}
-            onChange={(e) => setFormData({...formData, session: e.target.value})}
-            style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', background: 'rgba(15, 23, 42, 0.5)', color: 'white', border: '1px solid rgba(59, 130, 246, 0.3)' }}
+          value={formData.session || ''}
+          onChange={(e) => setFormData({...formData, session: e.target.value})}
+          style={{ width: '100%', padding: '0.5rem', borderRadius: '0.375rem', background: 'rgba(15, 23, 42, 0.5)', color: 'white', border: '1px solid rgba(59, 130, 246, 0.3)' }}
         >
-            <option value="Asie">🌏 Asie (Tokyo/Sydney)</option>
-            <option value="Londres">🇪🇺 Londres (Matin)</option>
-            <option value="New York">🇺🇸 New York (Après-midi)</option>
-            <option value="Overlap">⚡ Overlap (LDN/NY)</option>
+          <option value="">Sélectionner...</option>
+          <option value="Asie">🌏 Asie (Tokyo/Sydney)</option>
+          <option value="Londres">🇪🇺 Londres (Matin)</option>
+          <option value="New York">🇺🇸 New York (Après-midi)</option>
+          <option value="Overlap">⚡ Overlap (LDN/NY)</option>
         </select>
         </div>
+
+        <div>
           <label style={{ color: '#cbd5e1', fontSize: '0.875rem', marginBottom: '0.5rem', display: 'block' }}>Paire</label>
           <select
             value={formData.pair}
