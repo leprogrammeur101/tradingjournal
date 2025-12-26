@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { auth } from './firebase'; // Import de la config Firebase
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import AuthModal from './components/auth/AuthModal';
-import JournalPage from './pages/JournalPage';
+import JournalPage from './components/pages/JournalPage';
 import { LogOut, Layout } from 'lucide-react';
 
 function App() {
