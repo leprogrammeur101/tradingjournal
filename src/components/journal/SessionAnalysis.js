@@ -1,74 +1,124 @@
 import React from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer, 
+  Legend, 
+  Cell 
+} from 'recharts';
 
 const SessionAnalysis = ({ trades }) => {
-  // Calculer les profits par session
-  const sessionData = trades.reduce((acc, t) => {
-    // On récupère la session ou 'Inconnue'
-    const session = t.session || 'Inconnue';
-    if (!acc[session]) acc[session] = 0;
-    
-    // CORRECTION ICI : Utilisation de profit$ au lieu de profit
-    acc[session] += parseFloat(t.profit$) || 0;
-    return acc;
-  }, {});
+  const daysShort = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
 
-  // Transformation des données pour le graphique
-  const data = Object.entries(sessionData).map(([name, profit]) => ({
-    name,
-    profit: parseFloat(profit.toFixed(2))
+  // 1. Analyse et tri des données
+  const analysis = trades.reduce((acc, t) => {
+    const tradeDate = new Date(t.date);
+    const hour = tradeDate.getHours();
+    const dayIndex = tradeDate.getDay();
+    const profit = parseFloat(t.profit$) || 0;
+
+    // --- Logique Sessions ---
+    let session = 'Asie';
+    if (hour >= 8 && hour < 14) session = 'Londres';
+    else if (hour >= 14 && hour < 20) session = 'New York';
+
+    if (!acc.sessions[session]) {
+      acc.sessions[session] = { name: session, Gains: 0, Pertes: 0 };
+    }
+    if (profit >= 0) acc.sessions[session].Gains += profit;
+    else acc.sessions[session].Pertes += Math.abs(profit);
+
+    // --- Logique Jours ---
+    const dayName = daysShort[dayIndex];
+    if (!acc.days[dayName]) acc.days[dayName] = 0;
+    acc.days[dayName] += profit;
+
+    return acc;
+  }, { sessions: {}, days: {} });
+
+  // Transformation pour le graphique des Sessions
+  const sessionChartData = Object.values(analysis.sessions).map(s => ({
+    ...s,
+    Gains: parseFloat(s.Gains.toFixed(2)),
+    Pertes: parseFloat(s.Pertes.toFixed(2))
+  }));
+  const order = { 'Asie': 1, 'Londres': 2, 'New York': 3 };
+  sessionChartData.sort((a, b) => order[a.name] - order[b.name]);
+
+  // Transformation pour le graphique des Jours
+  const dayChartData = daysShort.map(day => ({
+    name: day,
+    profit: parseFloat((analysis.days[day] || 0).toFixed(2))
   }));
 
   return (
-    <div style={{ 
-      background: 'rgba(255, 255, 255, 0.05)', 
-      padding: '1.5rem', 
-      borderRadius: '0.75rem', 
-      border: '1px solid rgba(255, 255, 255, 0.1)',
-      height: '300px',
-      marginTop: '0px' // Aligné avec l'Equity Curve
-    }}>
-      <h4 style={{ color: '#94a3b8', fontSize: '0.875rem', marginBottom: '1rem' }}>Performance par Session</h4>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       
-      {data.length === 0 ? (
-        <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
-          En attente de données...
-        </div>
-      ) : (
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={false} />
-            <XAxis 
-              dataKey="name" 
-              stroke="#64748b" 
-              fontSize={12} 
-              tickLine={false}
-              axisLine={false}
-            />
-            <YAxis 
-              stroke="#64748b" 
-              fontSize={12} 
-              tickLine={false}
-              axisLine={false}
-              tickFormatter={(val) => `${val}$`} 
-            />
+      {/* SECTION SESSIONS (GAINS VS PERTES) */}
+      <div style={{ 
+        background: 'rgba(255, 255, 255, 0.05)', 
+        padding: '1.5rem', 
+        borderRadius: '0.75rem', 
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+        height: '320px'
+      }}>
+        <h4 style={{ color: '#f8fafc', fontSize: '0.9rem', fontWeight: '600', marginBottom: '1rem' }}>
+          Gains vs Pertes par Session
+        </h4>
+        <ResponsiveContainer width="100%" height="85%">
+          <BarChart data={sessionChartData} barGap={8}>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+            <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} axisLine={false} tickLine={false} />
+            <YAxis stroke="#64748b" fontSize={11} axisLine={false} tickLine={false} />
             <Tooltip 
-              cursor={{fill: 'rgba(255,255,255,0.05)'}}
-              contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '8px', color: '#fff' }}
-              itemStyle={{ fontWeight: 'bold' }}
-              formatter={(value) => [`${value}$`, 'Profit/Perte']}
+              cursor={{ fill: 'rgba(255,255,255,0.02)' }}
+              contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '8px' }}
+            />
+            <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ fontSize: '11px', paddingBottom: '10px' }} />
+            <Bar dataKey="Gains" fill="#10b981" radius={[4, 4, 0, 0]} name="Gains" />
+            <Bar dataKey="Pertes" fill="#ef4444" radius={[4, 4, 0, 0]} name="Pertes" />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* SECTION PERFORMANCE PAR JOUR (NETTE) */}
+      <div style={{ 
+        background: 'rgba(255, 255, 255, 0.05)', 
+        padding: '1.5rem', 
+        borderRadius: '0.75rem', 
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+        height: '220px'
+      }}>
+        <h4 style={{ color: '#f8fafc', fontSize: '0.9rem', fontWeight: '600', marginBottom: '1rem' }}>
+          Performance Nette par Jour
+        </h4>
+        <ResponsiveContainer width="100%" height="80%">
+          <BarChart data={dayChartData}>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+            <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} axisLine={false} tickLine={false} />
+            <YAxis stroke="#64748b" fontSize={10} axisLine={false} tickLine={false} />
+            <Tooltip 
+              cursor={{ fill: 'rgba(255,255,255,0.02)' }}
+              contentStyle={{ background: '#70747dff', border: 'none', borderRadius: '8px' }}
+              formatter={(v) => [`${v}$`, 'Profit Net']}
             />
             <Bar dataKey="profit" radius={[4, 4, 0, 0]}>
-              {data.map((entry, index) => (
+              {dayChartData.map((entry, index) => (
                 <Cell 
                   key={`cell-${index}`} 
-                  fill={entry.profit >= 0 ? '#10b981' : '#ef4444'} 
+                  fill={entry.profit >= 0 ? 'rgba(59, 130, 246, 0.5)' : 'rgba(239, 68, 68, 0.5)'} 
+                  stroke={entry.profit >= 0 ? '#3b82f6' : '#ef4444'}
                 />
               ))}
             </Bar>
           </BarChart>
         </ResponsiveContainer>
-      )}
+      </div>
+
     </div>
   );
 };

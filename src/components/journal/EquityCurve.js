@@ -1,16 +1,14 @@
 import React from 'react';
-import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
+// Ajout de ReferenceLine et Label dans les imports
+import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, ReferenceLine, Label } from 'recharts';
 
-const EquityCurve = ({ trades, initialCapital }) => {
-  // On s'assure que initialCapital est un nombre, sinon par défaut 0
+const EquityCurve = ({ trades, initialCapital, propFirmConfig }) => {
   const startBalance = parseFloat(initialCapital) || 0;
   let cumulativeBalance = startBalance;
   
-  // On trie les trades par date et on calcule le solde cumulé
   const data = [...trades]
     .sort((a, b) => new Date(a.date) - new Date(b.date))
     .map((trade, index) => {
-      // Utilisation de profit$ (le champ de ton formulaire)
       cumulativeBalance += parseFloat(trade.profit$) || 0;
       return {
         name: `T${index + 1}`,
@@ -19,7 +17,6 @@ const EquityCurve = ({ trades, initialCapital }) => {
       };
     });
 
-  // Le point de départ affiche maintenant ton capital initial
   const chartData = [{ name: 'Départ', balance: startBalance }, ...data];
 
   return (
@@ -47,7 +44,7 @@ const EquityCurve = ({ trades, initialCapital }) => {
             fontSize={12} 
             tickLine={false} 
             axisLine={false} 
-            domain={['dataMin - 100', 'auto']} // Ajuste l'échelle pour ne pas coller au bord
+            domain={['auto', 'auto']} 
             tickFormatter={(value) => `${value}$`} 
           />
           <Tooltip 
@@ -55,6 +52,36 @@ const EquityCurve = ({ trades, initialCapital }) => {
             itemStyle={{ color: '#60a5fa' }}
             formatter={(value) => [`${value.toFixed(2)} $`, 'Solde']}
           />
+
+          {/* --- MODIFICATION : LIGNES PROP FIRM --- */}
+          {propFirmConfig?.isActive && (
+            <>
+              {/* Ligne d'Objectif */}
+              {propFirmConfig.target && (
+                <ReferenceLine 
+                  y={startBalance + parseFloat(propFirmConfig.target)} 
+                  stroke="#10b981" 
+                  strokeDasharray="5 5" 
+                  strokeWidth={2}
+                >
+                  <Label value="TARGET" position="right" fill="#10b981" fontSize={10} fontWeight="bold" />
+                </ReferenceLine>
+              )}
+
+              {/* Ligne de Perte Maximale */}
+              {propFirmConfig.maxDrawdown && (
+                <ReferenceLine 
+                  y={startBalance - parseFloat(propFirmConfig.maxDrawdown)} 
+                  stroke="#ef4444" 
+                  strokeDasharray="5 5" 
+                  strokeWidth={2}
+                >
+                  <Label value="MAX LOSS" position="right" fill="#ef4444" fontSize={10} fontWeight="bold" />
+                </ReferenceLine>
+              )}
+            </>
+          )}
+
           <Area 
             type="monotone" 
             dataKey="balance" 

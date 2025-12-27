@@ -86,6 +86,30 @@ const TradeCard = ({ trade, onDelete }) => {
         </div>
       </div>
 
+      {trade.screenshotUrl && (
+        <div style={{ marginTop: '1rem', borderRadius: '0.5rem', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
+          <a href={trade.screenshotUrl} target="_blank" rel="noopener noreferrer">
+            <img 
+              src={trade.screenshotUrl} 
+              alt="Trade Setup" 
+              style={{ 
+                width: '100%', 
+                maxHeight: '200px', 
+                objectFit: 'cover', 
+                display: 'block',
+                cursor: 'zoom-in',
+                transition: 'opacity 0.2s'
+              }}
+              onMouseOver={(e) => e.currentTarget.style.opacity = 0.8}
+              onMouseOut={(e) => e.currentTarget.style.opacity = 1}
+            />
+          </a>
+          <div style={{ padding: '0.5rem', background: 'rgba(0,0,0,0.2)', fontSize: '0.75rem', textAlign: 'center', color: '#64748b' }}>
+            Cliquez sur l'image pour l'agrandir
+          </div>
+        </div>
+      )}
+
       {expanded && (
         <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid rgba(71, 85, 105, 0.5)' }}>
           {trade.setup && (

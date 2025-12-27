@@ -14,6 +14,7 @@ const JournalPage = ({ user }) => {
   const [trades, setTrades] = useState([]);
   const [showMacroForm, setShowMacroForm] = useState(false);
   const [showTradeForm, setShowTradeForm] = useState(false);
+  const [timeFilter, setTimeFilter] = useState('all');
   const [filterPair, setFilterPair] = useState('All'); 
 
   // GESTION DU CAPITAL
@@ -53,9 +54,19 @@ const JournalPage = ({ user }) => {
     setMacroAnalyses(newAnalyses);
   };
 
-  // ACTIONS TRADES
   const saveTrade = (data) => {
-    const newTrades = [{ ...data, id: Date.now(), date: new Date().toISOString() }, ...trades];
+    // On utilise data.date (celle du formulaire) si elle existe, sinon on met la date actuelle
+    const tradeDate = data.date ? new Date(data.date).toISOString() : new Date().toISOString();
+
+    const newTrade = { 
+      ...data, 
+      id: Date.now(), 
+      date: tradeDate, // On utilise la date traitée ici
+      profit$: parseFloat(data.profit$) || 0 // Sécurité pour être sûr que c'est un nombre
+    };
+
+    const newTrades = [newTrade, ...trades];
+    
     localStorage.setItem(`trades_${userSuffix}`, JSON.stringify(newTrades));
     setTrades(newTrades);
     setShowTradeForm(false);
@@ -71,8 +82,37 @@ const JournalPage = ({ user }) => {
   const totalProfit = trades.reduce((sum, t) => sum + (parseFloat(t.profit$) || 0), 0);
   const currentBalance = parseFloat(initialCapital) + totalProfit;
   
-  const pairList = ['All', ...new Set(trades.map(t => t.pair?.toUpperCase()).filter(Boolean))];
-  const filteredTrades = filterPair === 'All' ? trades : trades.filter(t => t.pair?.toUpperCase() === filterPair);
+  const getFilteredTrades = () => {
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    return trades.filter(trade => {
+      const tradeDate = new Date(trade.date);
+      
+      // 1. Filtre par Paire
+      const matchPair = filterPair === 'all' || trade.pair === filterPair;
+
+      // 2. Filtre par Temps
+      let matchTime = true;
+      if (timeFilter === 'today') {
+        matchTime = tradeDate >= startOfToday;
+      } else if (timeFilter === 'week') {
+        const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        matchTime = tradeDate >= oneWeekAgo;
+      } else if (timeFilter === 'month') {
+        matchTime = tradeDate.getMonth() === now.getMonth() && 
+                    tradeDate.getFullYear() === now.getFullYear();
+      }
+
+      // Le trade doit valider les DEUX conditions
+      return matchPair && matchTime;
+    });
+  };
+
+  const filteredTrades = getFilteredTrades();
+  
+  // Extraire la liste unique des paires présentes dans tes trades pour le menu déroulant
+  const uniquePairs = ['all', ...new Set(trades.map(t => t.pair))];
 
   return (
     <div style={{ maxWidth: '80rem', margin: '0 auto', padding: '1rem' }}>
@@ -129,17 +169,69 @@ const JournalPage = ({ user }) => {
                 <EquityCurve trades={filteredTrades} initialCapital={initialCapital} />
                 <SessionAnalysis trades={filteredTrades} />
             </div>
-            <TradingStats trades={filteredTrades} />
-            <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1.5rem' }}>
-              <label style={{ color: '#94a3b8', fontSize: '0.875rem' }}>Filtrer par actif :</label>
-              <select value={filterPair} onChange={(e) => setFilterPair(e.target.value)} style={{ background: '#1e293b', color: 'white', border: '1px solid rgba(255,255,255,0.1)', padding: '0.5rem', borderRadius: '0.5rem' }}>
-                {pairList.map(pair => <option key={pair} value={pair}>{pair}</option>)}
+
+            <TradingStats trades={filteredTrades} />      
+            <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              
+              {/* Filtre Temporel (Pills) */}
+              <div style={{ display: 'flex', background: 'rgba(30, 41, 59, 0.5)', padding: '0.3rem', borderRadius: '0.5rem', border: '1px solid rgba(255,255,255,0.1)' }}>
+                {[
+                  { id: 'all', label: 'Tout' },
+                  { id: 'month', label: 'Mois' },
+                  { id: 'week', label: 'Semaine' },
+                  { id: 'today', label: 'Aujourd\'hui' }
+                ].map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => setTimeFilter(t.id)}
+                    style={{
+                      padding: '0.4rem 1rem',
+                      borderRadius: '0.4rem',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: '0.8rem',
+                      background: timeFilter === t.id ? '#3b82f6' : 'transparent',
+                      color: timeFilter === t.id ? 'white' : '#94a3b8',
+                      transition: '0.2s'
+                    }}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Filtre par Paire (Dropdown) */}
+              <select 
+                value={filterPair}
+                onChange={(e) => setFilterPair(e.target.value)}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: '#1e293b',
+                  color: 'white',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: '0.5rem',
+                  outline: 'none'
+                }}
+              >
+                {uniquePairs.map(pair => (
+                  <option key={pair} value={pair}>
+                    {pair === 'all' ? 'Toutes les paires' : pair}
+                  </option>
+                ))}
               </select>
+              
+              <span style={{ color: '#64748b', fontSize: '0.8rem' }}>
+                {filteredTrades.length} trade(s) trouvé(s)
+              </span>
             </div>
+
+
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
               <h3 style={{ color: 'white', fontSize: '1.25rem' }}>Mon Journal de Trading</h3>
               <button onClick={() => setShowTradeForm(true)} style={{ padding: '0.6rem 1.2rem', borderRadius: '0.5rem', background: '#10b981', color: 'white', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Plus size={18} /> Nouveau Trade</button>
             </div>
+
+
             {showTradeForm && <TradeForm onSave={saveTrade} onCancel={() => setShowTradeForm(false)} />}
             <div style={{ display: 'grid', gap: '1rem', marginTop: '1.5rem' }}>
               {filteredTrades.length === 0 ? <div style={{ textAlign: 'center', padding: '3rem', color: '#94a3b8' }}><BarChart3 size={48} style={{ margin: '0 auto 1rem', opacity: 0.5 }} /><p>Aucun trade trouvé.</p></div> : filteredTrades.map(trade => <TradeCard key={trade.id} trade={trade} onDelete={deleteTrade} />)}
