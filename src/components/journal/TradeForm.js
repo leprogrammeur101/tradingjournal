@@ -39,7 +39,21 @@ useEffect(() => {
       setFormData(prev => ({ ...prev, rr: newRR }));
     }
   }
-}, [formData.entry, formData.rr, formData.sl, formData.tp]); // On retire formData.rr des dépendances
+}, [formData.entry, formData.rr, formData.sl, formData.tp]);
+
+// AUTOMATISATION : Résultat en fonction du profit saisi
+useEffect(() => {
+  const val = parseFloat(formData.profit$);
+  if (!isNaN(val)) {
+    let newResult = 'be';
+    if (val > 5) newResult = 'win';
+    else if (val < -5) newResult = 'loss';
+
+    if (formData.result !== newResult) {
+      setFormData(prev => ({ ...prev, result: newResult }));
+    }
+  }
+}, [formData.profit$, formData.result]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -180,13 +194,8 @@ useEffect(() => {
         </div>
 
         <div>
-          <label style={{ color: '#cbd5e1', fontSize: '0.875rem', marginBottom: '0.5rem', display: 'block' }}>Résultat</label>
-          <select
-            value={formData.result}
-            onChange={(e) => setFormData({...formData, result: e.target.value})}
-            style={{ width: '100%', padding: '0.5rem', borderRadius: '0.375rem', border: '1px solid rgba(59, 130, 246, 0.3)', background: 'rgba(15, 23, 42, 0.5)', color: 'white' }}
-          >
-            <option value="">En cours...</option>
+          <label style={{ color: '#cbd5e1', fontSize: '0.875rem', display: 'block', marginBottom: '0.5rem' }}>Résultat (Auto)</label>
+          <select name="result" value={formData.result} onChange={handleChange} style={{ width: '100%', padding: '0.5rem', borderRadius: '0.375rem', border: '1px solid rgba(59, 130, 246, 0.3)', background: 'rgba(15, 23, 42, 0.5)', color: 'white' }}>
             <option value="win">✅ Win</option>
             <option value="loss">❌ Loss</option>
             <option value="be">➖ Break Even</option>

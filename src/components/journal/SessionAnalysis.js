@@ -55,6 +55,9 @@ const SessionAnalysis = ({ trades }) => {
     profit: parseFloat((analysis.days[day] || 0).toFixed(2))
   }));
 
+
+  
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       
@@ -118,7 +121,8 @@ const SessionAnalysis = ({ trades }) => {
           </BarChart>
         </ResponsiveContainer>
       </div>
-
+      
+      
     </div>
   );
 };

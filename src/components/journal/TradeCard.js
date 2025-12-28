@@ -4,19 +4,16 @@ import { Calendar, ChevronDown, ChevronUp } from 'lucide-react';
 const TradeCard = ({ trade, onDelete }) => {
   const [expanded, setExpanded] = useState(false);
 
-  const getResultColor = (result) => {
-    if (result === 'win') return '#22c55e';
-    if (result === 'loss') return '#ef4444';
-    if (result === 'be') return '#eab308';
-    return '#94a3b8';
+  // LOGIQUE DES BADGES basée sur le profit
+  const getBadgeDetails = (profit) => {
+    const val = parseFloat(profit) || 0;
+    if (val >= 200) return { label: '🚀 JACKPOT', color: '#10b981', bg: 'rgba(16, 185, 129, 0.2)' };
+    if (val > 5) return { label: '✅ WIN', color: '#22c55e', bg: 'rgba(34, 197, 94, 0.1)' };
+    if (val < -5) return { label: '❌ LOSS', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)' };
+    return { label: '⚖️ B.E', color: '#94a3b8', bg: 'rgba(148, 163, 184, 0.1)' };
   };
 
-  const getResultIcon = (result) => {
-    if (result === 'win') return '✅ Victory';
-    if (result === 'loss') return '❌ Perte';
-    if (result === 'be') return '➖ B.E';
-    return '⏳ En cours';
-  };
+  const badge = getBadgeDetails(trade.profit$);
 
   return (
     <div style={{ background: 'rgba(30, 41, 59, 0.5)', borderRadius: '0.75rem', padding: '1.5rem', border: '1px solid rgba(71, 85, 105, 0.5)', marginBottom: '1rem' }}>
@@ -41,26 +38,33 @@ const TradeCard = ({ trade, onDelete }) => {
           </p>
         </div>
         
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          {/* Affichage du Profit Net sur la carte */}
-          <span style={{ color: parseFloat(trade.profit$) >= 0 ? '#22c55e' : '#ef4444', fontWeight: 'bold', marginRight: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          {/* MONTANT NET */}
+          <span style={{ 
+            color: parseFloat(trade.profit$) >= 0 ? '#4ade80' : '#f87171', 
+            fontWeight: 'bold', 
+            fontSize: '1.1rem',
+            fontFamily: 'monospace' 
+          }}>
             {parseFloat(trade.profit$) > 0 ? '+' : ''}{trade.profit$}$
           </span>
 
+          {/* BADGE DYNAMIQUE */}
           <span style={{ 
-            padding: '0.375rem 0.75rem', 
-            borderRadius: '0.375rem', 
-            background: `${getResultColor(trade.result)}20`,
-            color: getResultColor(trade.result),
-            fontSize: '0.875rem',
-            fontWeight: '600'
+            padding: '0.4rem 0.8rem', 
+            borderRadius: '20px', 
+            background: badge.bg,
+            color: badge.color,
+            fontSize: '0.75rem',
+            fontWeight: '800',
+            border: `1px solid ${badge.color}44`,
+            minWidth: '95px',
+            textAlign: 'center'
           }}>
-            {getResultIcon(trade.result)}
+            {badge.label}
           </span>
-          <button
-            onClick={() => setExpanded(!expanded)}
-            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#60a5fa' }}
-          >
+
+          <button onClick={() => setExpanded(!expanded)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#60a5fa' }}>
             {expanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
           </button>
         </div>
