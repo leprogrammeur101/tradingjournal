@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, FileText, BarChart3 } from 'lucide-react'; // Retrait de Wallet pour corriger l'erreur
+import { Plus, FileText, BarChart3 } from 'lucide-react'; 
 import MacroForm from '../components/journal/MacroForm';
 import MacroCard from '../components/journal/MacroCard';
 import TradeForm from '../components/journal/TradeForm';
@@ -7,7 +7,7 @@ import TradeCard from '../components/journal/TradeCard';
 import EquityCurve from '../components/journal/EquityCurve';
 import TradingStats from '../components/journal/TradingStats';
 import SessionAnalysis from '../components/journal/SessionAnalysis';
-import { db } from '../firebase'; // Assurez-vous que le chemin est correct
+import { db } from '../firebase'; 
 import { 
   collection, 
   addDoc, 
@@ -16,7 +16,8 @@ import {
   where, 
   orderBy, 
   deleteDoc, 
-  doc 
+  doc,
+  setDoc // Ajouté pour le capital
 } from 'firebase/firestore';
 
 const JournalPage = ({ user }) => {
@@ -26,17 +27,22 @@ const JournalPage = ({ user }) => {
   const [showMacroForm, setShowMacroForm] = useState(false);
   const [showTradeForm, setShowTradeForm] = useState(false);
   const [timeFilter, setTimeFilter] = useState('all');
-  const [filterPair, setFilterPair] = useState('All'); 
+  const [filterPair, setFilterPair] = useState('all'); 
 
   // GESTION DU CAPITAL
   const [initialCapital, setInitialCapital] = useState(10000);
   const [isEditingCap, setIsEditingCap] = useState(false);
 
-
-  // --- LOGIQUE DE RÉCUPÉRATION CLOUD (Remplace LocalStorage) ---
-  // --- LOGIQUE DE RÉCUPÉRATION CLOUD EN TEMPS RÉEL ---
+  // --- 1. RÉCUPÉRATION DU CAPITAL ET DES DONNÉES EN TEMPS RÉEL ---
   useEffect(() => {
     if (!user) return;
+
+    // Écoute du Capital (Settings)
+    const unsubscribeCap = onSnapshot(doc(db, "settings", user.uid), (docSnap) => {
+      if (docSnap.exists()) {
+        setInitialCapital(docSnap.data().initialCapital);
+      }
+    });
 
     // Écoute des Trades
     const qTrades = query(
@@ -61,71 +67,73 @@ const JournalPage = ({ user }) => {
     });
 
     return () => {
+      unsubscribeCap();
       unsubscribeTrades();
       unsubscribeMacros();
     };
   }, [user]);
 
+  // --- 2. LOGIQUE DE SAUVEGARDE DU CAPITAL ---
+  const saveCapital = async (val) => {
+    const numVal = parseFloat(val) || 0;
+    try {
+      // On utilise setDoc avec merge pour créer ou mettre à jour le document de l'utilisateur
+      await setDoc(doc(db, "settings", user.uid), { 
+        initialCapital: numVal 
+      }, { merge: true });
+      
+      setInitialCapital(numVal);
+      setIsEditingCap(false);
+    } catch (error) {
+      console.error("Erreur capital:", error);
+    }
+  };
 
-// --- LOGIQUE D'ENREGISTREMENT DANS LA BASE DE DONNÉES ---
+  // --- 3. LOGIQUE TRADES ---
   const saveTrade = async (data) => {
     try {
       const tradeDate = data.date ? new Date(data.date).toISOString() : new Date().toISOString();
-      
       const newTrade = { 
         ...data, 
-        userId: user.uid, // Très important pour la synchronisation
+        userId: user.uid,
         date: tradeDate,
         profit$: parseFloat(data.profit$) || 0,
         createdAt: new Date()
       };
-
-      // Envoi à Firestore
       await addDoc(collection(db, "trades"), newTrade);
-      
       setShowTradeForm(false);
     } catch (error) {
-      console.error("Erreur lors de l'ajout du trade:", error);
-      alert("Erreur de connexion à la base de données");
+      console.error("Erreur ajout trade:", error);
     }
   };
-  
-  const saveCapital = (val) => {
-    const numVal = parseFloat(val) || 0;
-    setInitialCapital(numVal);
-    setIsEditingCap(false);
+
+  const deleteTrade = async (id) => {
+    if (window.confirm("Supprimer ce trade définitivement ?")) {
+      await deleteDoc(doc(db, "trades", id));
+    }
   };
 
-  // LOGIQUE MACRO (Définition des fonctions manquantes)
-  const saveMacro = (data) => {
-    const newAnalyses = [{ ...data, id: Date.now(), date: new Date().toISOString() }, ...macroAnalyses];
-    setMacroAnalyses(newAnalyses);
-    setShowMacroForm(false);
+  // --- 4. LOGIQUE MACRO ---
+  const saveMacro = async (data) => {
+    try {
+      await addDoc(collection(db, "macros"), {
+        ...data,
+        userId: user.uid,
+        date: new Date().toISOString()
+      });
+      setShowMacroForm(false);
+    } catch (error) {
+      console.error("Erreur ajout macro:", error);
+    }
   };
 
   const deleteMacro = async (id) => {
     if (window.confirm("Supprimer cette analyse macro ?")) {
-      try {
-        // Suppression directe dans Firestore
-        await deleteDoc(doc(db, "macros", id));
-      } catch (error) {
-        console.error("Erreur suppression macro:", error);
-      }
+      await deleteDoc(doc(db, "macros", id));
     }
   };
 
-
-  const deleteTrade = async (id) => {
-    if (window.confirm("Supprimer ce trade définitivement ?")) {
-      try {
-        await deleteDoc(doc(db, "trades", id));
-      } catch (error) {
-        console.error("Erreur suppression:", error);
-      }
-    }
-  };
-
-  // FILTRAGE ET CALCULS
+  // --- 5. FILTRAGE ET CALCULS ---
   const totalProfit = trades.reduce((sum, t) => sum + (parseFloat(t.profit$) || 0), 0);
   const currentBalance = parseFloat(initialCapital) + totalProfit;
   
@@ -135,30 +143,16 @@ const JournalPage = ({ user }) => {
 
     return trades.filter(trade => {
       const tradeDate = new Date(trade.date);
-      
-      // 1. Filtre par Paire
       const matchPair = filterPair === 'all' || trade.pair === filterPair;
-
-      // 2. Filtre par Temps
       let matchTime = true;
-      if (timeFilter === 'today') {
-        matchTime = tradeDate >= startOfToday;
-      } else if (timeFilter === 'week') {
-        const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        matchTime = tradeDate >= oneWeekAgo;
-      } else if (timeFilter === 'month') {
-        matchTime = tradeDate.getMonth() === now.getMonth() && 
-                    tradeDate.getFullYear() === now.getFullYear();
-      }
-
-      // Le trade doit valider les DEUX conditions
+      if (timeFilter === 'today') matchTime = tradeDate >= startOfToday;
+      else if (timeFilter === 'week') matchTime = tradeDate >= new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      else if (timeFilter === 'month') matchTime = tradeDate.getMonth() === now.getMonth() && tradeDate.getFullYear() === now.getFullYear();
       return matchPair && matchTime;
     });
   };
 
   const filteredTrades = getFilteredTrades();
-  
-  // Extraire la liste unique des paires présentes dans tes trades pour le menu déroulant
   const uniquePairs = ['all', ...new Set(trades.map(t => t.pair))];
 
   return (
@@ -191,7 +185,7 @@ const JournalPage = ({ user }) => {
           </div>
         </div>
 
-        {/* Navigation par onglets */}
+        {/* Navigation */}
         <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', borderBottom: '1px solid rgba(59, 130, 246, 0.3)' }}>
           <button onClick={() => setActiveTab('macro')} style={{ padding: '0.75rem 1.5rem', background: 'transparent', border: 'none', borderBottom: activeTab === 'macro' ? '2px solid #3b82f6' : 'none', color: activeTab === 'macro' ? '#60a5fa' : '#94a3b8', fontWeight: '600', cursor: 'pointer' }}>📈 Analyses Macro</button>
           <button onClick={() => setActiveTab('trades')} style={{ padding: '0.75rem 1.5rem', background: 'transparent', border: 'none', borderBottom: activeTab === 'trades' ? '2px solid #3b82f6' : 'none', color: activeTab === 'trades' ? '#60a5fa' : '#94a3b8', fontWeight: '600', cursor: 'pointer' }}>💼 Journal de Trades</button>
@@ -216,68 +210,23 @@ const JournalPage = ({ user }) => {
                 <EquityCurve trades={filteredTrades} initialCapital={initialCapital} />
                 <SessionAnalysis trades={filteredTrades} />
             </div>
-
             <TradingStats trades={filteredTrades} />      
+            
             <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap', alignItems: 'center' }}>
-              
-              {/* Filtre Temporel (Pills) */}
               <div style={{ display: 'flex', background: 'rgba(30, 41, 59, 0.5)', padding: '0.3rem', borderRadius: '0.5rem', border: '1px solid rgba(255,255,255,0.1)' }}>
-                {[
-                  { id: 'all', label: 'Tout' },
-                  { id: 'month', label: 'Mois' },
-                  { id: 'week', label: 'Semaine' },
-                  { id: 'today', label: 'Aujourd\'hui' }
-                ].map((t) => (
-                  <button
-                    key={t.id}
-                    onClick={() => setTimeFilter(t.id)}
-                    style={{
-                      padding: '0.4rem 1rem',
-                      borderRadius: '0.4rem',
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontSize: '0.8rem',
-                      background: timeFilter === t.id ? '#3b82f6' : 'transparent',
-                      color: timeFilter === t.id ? 'white' : '#94a3b8',
-                      transition: '0.2s'
-                    }}
-                  >
-                    {t.label}
-                  </button>
+                {[{ id: 'all', label: 'Tout' }, { id: 'month', label: 'Mois' }, { id: 'week', label: 'Semaine' }, { id: 'today', label: 'Aujourd\'hui' }].map((t) => (
+                  <button key={t.id} onClick={() => setTimeFilter(t.id)} style={{ padding: '0.4rem 1rem', borderRadius: '0.4rem', border: 'none', cursor: 'pointer', fontSize: '0.8rem', background: timeFilter === t.id ? '#3b82f6' : 'transparent', color: timeFilter === t.id ? 'white' : '#94a3b8' }}>{t.label}</button>
                 ))}
               </div>
-
-              {/* Filtre par Paire (Dropdown) */}
-              <select 
-                value={filterPair}
-                onChange={(e) => setFilterPair(e.target.value)}
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: '#1e293b',
-                  color: 'white',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: '0.5rem',
-                  outline: 'none'
-                }}
-              >
-                {uniquePairs.map(pair => (
-                  <option key={pair} value={pair}>
-                    {pair === 'all' ? 'Toutes les paires' : pair}
-                  </option>
-                ))}
+              <select value={filterPair} onChange={(e) => setFilterPair(e.target.value)} style={{ padding: '0.5rem 1rem', background: '#1e293b', color: 'white', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.5rem' }}>
+                {uniquePairs.map(pair => <option key={pair} value={pair}>{pair === 'all' ? 'Toutes les paires' : pair}</option>)}
               </select>
-              
-              <span style={{ color: '#64748b', fontSize: '0.8rem' }}>
-                {filteredTrades.length} trade(s) trouvé(s)
-              </span>
             </div>
-
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
               <h3 style={{ color: 'white', fontSize: '1.25rem' }}>Mon Journal de Trading</h3>
               <button onClick={() => setShowTradeForm(true)} style={{ padding: '0.6rem 1.2rem', borderRadius: '0.5rem', background: '#10b981', color: 'white', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Plus size={18} /> Nouveau Trade</button>
             </div>
-
 
             {showTradeForm && <TradeForm onSave={saveTrade} onCancel={() => setShowTradeForm(false)} />}
             <div style={{ display: 'grid', gap: '1rem', marginTop: '1.5rem' }}>
