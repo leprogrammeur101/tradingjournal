@@ -7,6 +7,9 @@ import TradeCard from '../components/journal/TradeCard';
 import EquityCurve from '../components/journal/EquityCurve';
 import TradingStats from '../components/journal/TradingStats';
 import SessionAnalysis from '../components/journal/SessionAnalysis';
+import MacroDashboard from '../components/journal/MacroDashboard';
+import MacroCharts from '../components/journal/MacroCharts';
+
 import { db } from '../firebase'; 
 import { 
   collection, 
@@ -193,9 +196,16 @@ const JournalPage = ({ user }) => {
 
         {activeTab === 'macro' && (
           <div>
+            <MacroDashboard /> 
+            {macroAnalyses.length > 0 && <MacroCharts data={macroAnalyses} />}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h3 style={{ color: 'white', fontSize: '1.25rem' }}>Mes Recherches Macro-économiques</h3>
-              <button onClick={() => setShowMacroForm(true)} style={{ padding: '0.6rem 1.2rem', borderRadius: '0.5rem', background: '#3b82f6', color: 'white', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Plus size={18} /> Nouvelle Analyse</button>
+              <h3 style={{ color: 'white', fontSize: '1.25rem' }}>Mes Analyses Personnelles</h3>
+              <button 
+                onClick={() => setShowMacroForm(true)} 
+                style={{ padding: '0.6rem 1.2rem', borderRadius: '0.5rem', background: '#3b82f6', color: 'white', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+              >
+                <Plus size={18} /> Nouvelle Analyse
+              </button>
             </div>
             {showMacroForm && <MacroForm onSave={saveMacro} onCancel={() => setShowMacroForm(false)} />}
             <div style={{ display: 'grid', gap: '1rem', marginTop: '1.5rem' }}>
